@@ -560,3 +560,12 @@ footer {
         grid-template-columns: 1fr
     }
 }
+
+.admin-header {
+    align-items: center;
+}
+
+.card:hover {
+    background: #151d32;
+    transition: background 0.2s ease;
+}
