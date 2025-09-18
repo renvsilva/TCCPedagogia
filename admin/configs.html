@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Configurações — Admin</title>
+    <link rel="stylesheet" href="../main.css" />
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/12.2.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.2.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.2.1/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.2.1/firebase-database-compat.js"></script>
+
+    <script src="../firebase.js"></script>
+    <script src="admin.js"></script>
+</head>
+
+<body class="hidden">
+    <div class="admin-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar panel">
+            <h2>Admin</h2>
+            <nav>
+                <a href="dashboard.html" class="nav-link">🏠 Dashboard</a>
+                <a href="pacientes.html" class="nav-link">👥 Pacientes</a>
+                <a href="consultas.html" class="nav-link">📅 Agenda</a>
+                <a href="configs.html" class="nav-link">⚙️ Configurações</a>
+            </nav>
+        </aside>
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="container">
+            <h1>⚙️ Configurações</h1>
+            <p class="muted">Gerencie permissões e administradores do sistema.</p>
+
+            <!-- FORMULÁRIO -->
+            <section class="panel mt-4">
+                <h2>➕ Adicionar Administrador</h2>
+                <div class="form mt-3">
+                    <label for="email">E-mail do usuário:</label>
+                    <input type="email" id="email" class="input" required />
+                    <button type="button" id="promoteBtn" class="btn btn-primary mt-3">
+                        Promover a Admin
+                    </button>
+                </div>
+            </section>
+
+            <!-- LISTAGEM -->
+            <section class="panel mt-6">
+                <h2>👥 Usuários do Sistema</h2>
+                <p class="section-sub">Veja todos os usuários e altere permissões de administrador em tempo real.</p>
+
+                <div class="table-responsive mt-3">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>E-mail</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersBody">
+                            <tr>
+                                <td colspan="4" style="text-align:center;">Carregando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const usersBody = document.getElementById("usersBody");
+
+            // ---- FUNÇÕES DE PROMOVER / REMOVER ----
+            async function setAdmin(uid, status) {
+                try {
+                    await window.db.collection("users").doc(uid).update({ isAdmin: status });
+                    alert(status ? "✅ Usuário promovido a admin!" : "❌ Admin removido!");
+                    console.log("Usuário atualizado:", uid, "-> isAdmin:", status);
+                } catch (err) {
+                    console.error("Erro ao atualizar admin:", err);
+                    alert("Erro ao atualizar administrador.");
+                }
+            }
+
+            // ---- LISTAGEM DE USUÁRIOS EM TEMPO REAL ----
+            function renderUsers(users) {
+                usersBody.innerHTML = "";
+
+                if (users.length === 0) {
+                    usersBody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Nenhum usuário encontrado</td></tr>`;
+                    return;
+                }
+
+                users.forEach((doc) => {
+                    const u = doc.data();
+                    const tr = document.createElement("tr");
+
+                    tr.innerHTML = `
+        <td>${u.name || "-"}</td>
+        <td>${u.email || "-"}</td>
+        <td>
+          <span class="badge" style="background:${u.isAdmin ? "var(--brand-2)" : "var(--muted)"}">
+            ${u.isAdmin ? "Admin" : "Usuário"}
+          </span>
+        </td>
+        <td>
+          ${u.isAdmin
+                            ? `<button class="btn btn-ghost" data-remove="${doc.id}">❌ Remover Admin</button>`
+                            : `<button class="btn btn-primary" data-promote="${doc.id}">➕ Tornar Admin</button>`}
+        </td>
+      `;
+
+                    usersBody.appendChild(tr);
+                });
+
+                // Eventos de ação (reatribuir a cada renderização)
+                document.querySelectorAll("[data-promote]").forEach((btn) => {
+                    btn.addEventListener("click", () => {
+                        console.log("Promover clicado para UID:", btn.dataset.promote);
+                        setAdmin(btn.dataset.promote, true);
+                    });
+                });
+
+                document.querySelectorAll("[data-remove]").forEach((btn) => {
+                    btn.addEventListener("click", () => {
+                        console.log("Remover clicado para UID:", btn.dataset.remove);
+                        setAdmin(btn.dataset.remove, false);
+                    });
+                });
+            }
+
+            // Snapshot em tempo real (sem orderBy para não quebrar se faltar campo)
+            window.db.collection("users").onSnapshot((snap) => {
+                console.log("Snapshot atualizado. Total usuários:", snap.size);
+                renderUsers(snap.docs);
+            });
+        });
+    </script>
+
+
+</html>
