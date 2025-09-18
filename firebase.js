@@ -11,8 +11,8 @@ const firebaseConfig = {
 
 // Inicializando o Firebase
 const app = firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+window.auth = firebase.auth();
+window.db = firebase.firestore();
 
 // Espera o DOM ser carregado
 document.addEventListener('DOMContentLoaded', () => {
@@ -291,6 +291,50 @@ document.addEventListener('DOMContentLoaded', () => {
       adminLink.classList.add('hidden');
     }
   }
+
+  /**
+ * Verifica o status de login e o privilégio de administrador do usuário.
+ * Redireciona o usuário se ele não for um administrador logado.
+ * @param {string} redirectPath - O caminho para onde redirecionar em caso de falha no acesso.
+ */
+window.checkAdminAccess = function(redirectPath = 'index.html') {
+    // Retorna uma Promise, mas o redirecionamento é o foco principal
+    return new Promise((resolve, reject) => {
+        // Observador que verifica o estado de autenticação (é executado uma vez no início)
+        const unsubscribe = auth.onAuthStateChanged(async (user) => {
+            // Importante: Desinscrever imediatamente
+            unsubscribe(); 
+
+            if (!user) {
+                // 1. Não Logado: Redireciona imediatamente
+                console.log('Acesso negado: Usuário não logado.');
+                window.location.href = redirectPath;
+                return reject('Not logged in');
+            }
+
+            try {
+                // 2. Logado: Checa status de Admin no Firestore
+                const userDoc = await db.collection('users').doc(user.uid).get();
+
+                if (userDoc.exists && userDoc.data().isAdmin === true) {
+                    // 3. É Admin: Permite o acesso
+                    console.log('Acesso concedido: Usuário é administrador.');
+                    resolve(user);
+                } else {
+                    // 4. Não é Admin: Redireciona
+                    console.log('Acesso negado: Usuário logado, mas não é administrador.');
+                    window.location.href = redirectPath;
+                    return reject('Not an admin');
+                }
+            } catch (error) {
+                console.error('Erro ao verificar acesso de administrador:', error);
+                // 5. Erro: Redireciona por segurança
+                window.location.href = redirectPath;
+                return reject(error);
+            }
+        });
+    });
+};
 
   // ----- Observador de estado de autenticação (ATUALIZADO) -----
   auth.onAuthStateChanged((user) => {
