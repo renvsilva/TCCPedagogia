@@ -25,26 +25,56 @@ document.addEventListener('DOMContentLoaded', () => {
   const authControlsLoggedIn = document.getElementById('auth-controls-logged-in');
   const userEmailDisplay = document.getElementById('user-email-display');
 
+  const adminLink = document.getElementById('admin-link');
+
+  const userProfileContainer = document.getElementById('user-profile-container');
+  const userNameNav = document.getElementById('user-name-nav');
+  const userPhoto = document.getElementById('user-photo');
+  const profileDropdown = document.getElementById('profile-dropdown');
+
+
+  // ----- NOVA LÓGICA: Dropdown do Perfil e Fechar ao Clicar Fora -----
+
+  // Função para alternar o dropdown
+  function toggleDropdown(e) {
+    e.stopPropagation(); // Impede o clique de se propagar para o documento
+    profileDropdown.classList.toggle('hidden');
+  }
+
+  // Evento de clique para alternar o dropdown
+  if (userProfileContainer) {
+    userProfileContainer.addEventListener('click', toggleDropdown);
+  }
+
+  // Evento de clique no documento para fechar o dropdown se estiver aberto
+  document.addEventListener('click', (e) => {
+    // Verifica se o clique não foi dentro do container do perfil
+    if (profileDropdown && !profileDropdown.classList.contains('hidden') &&
+      userProfileContainer && !userProfileContainer.contains(e.target)) {
+      profileDropdown.classList.add('hidden');
+    }
+  });
+
   // ----- Funções para controlar a exibição do modal -----
   // Exibir o modal de login
-  window.openOverlay = function() {
+  window.openOverlay = function () {
     loginOverlay.classList.remove('hidden');
     window.showLogin(); // Exibe o formulário de login quando o modal abre
   };
 
   // Fechar o modal de login
-  window.closeLogin = function() {
+  window.closeLogin = function () {
     loginOverlay.classList.add('hidden');
   };
 
   // Exibir o formulário de criação de conta
-  window.showCreate = function() {
+  window.showCreate = function () {
     loginForm.classList.add('hidden');
     createAccountForm.classList.remove('hidden');
   };
 
   // Exibir o formulário de login
-  window.showLogin = function() {
+  window.showLogin = function () {
     createAccountForm.classList.add('hidden');
     loginForm.classList.remove('hidden');
   };
@@ -86,9 +116,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ----- Funções de autenticação -----
-  
+
   // Função para criar conta com e-mail e senha
-  window.signUpEmailPassword = async function() {
+  window.signUpEmailPassword = async function () {
     const email = document.getElementById('user-email-signup').value;
     const password = document.getElementById('user-pass-signup').value;
     const passwordConfirm = document.getElementById('user-pass2-signup').value;
@@ -143,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Função para login com e-mail e senha
-  window.signInEmailPassword = async function() {
+  window.signInEmailPassword = async function () {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-pass').value;
 
@@ -188,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Função para login com Google
-  window.signInWithGoogle = async function() {
+  window.signInWithGoogle = async function () {
     const provider = new firebase.auth.GoogleAuthProvider();
     const googleSignInButton = document.querySelector('#login-form button[onclick="signInWithGoogle()"]');
     const originalGoogleText = googleSignInButton ? googleSignInButton.textContent : 'Entrar com Google';
@@ -230,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Função para logout
-  window.logoutUser = async function() {
+  window.logoutUser = async function () {
     try {
       await auth.signOut();
       console.log('Usuário deslogado');
@@ -241,29 +271,56 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ----- Observador de estado de autenticação -----
+  async function checkAdminStatus(uid) {
+    if (!adminLink) return; // Sai se o link admin não existe
+
+    try {
+      // Tenta buscar o documento do usuário na coleção 'users'
+      const userDoc = await db.collection('users').doc(uid).get();
+
+      if (userDoc.exists && userDoc.data().isAdmin === true) {
+        // Se o campo 'isAdmin' for verdadeiro, mostra o link
+        adminLink.classList.remove('hidden');
+      } else {
+        // Caso contrário, garante que o link está oculto
+        adminLink.classList.add('hidden');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar status de admin:', error);
+      // Em caso de erro, por segurança, oculta o link
+      adminLink.classList.add('hidden');
+    }
+  }
+
+  // ----- Observador de estado de autenticação (ATUALIZADO) -----
   auth.onAuthStateChanged((user) => {
     if (user) {
-      // Atualiza a interface para mostrar que o usuário está logado
-      if (authControlsLoggedOut) authControlsLoggedOut.classList.add('hidden');
-      if (authControlsLoggedIn) authControlsLoggedIn.classList.remove('hidden');
-      if (userEmailDisplay) userEmailDisplay.textContent = user.displayName || user.email;
+      // LOGADO: Mostra Perfil, Oculta Login
+      if (userProfileContainer) userProfileContainer.classList.remove('hidden');
+      if (loginBtn) loginBtn.classList.add('hidden');
 
-      // Atualiza o botão de login/logout
-      if (loginBtn) {
-        loginBtn.textContent = "Logout"; // Texto do botão na navbar
-        loginBtn.onclick = async (e) => {
-          e.preventDefault();
-          await window.logoutUser();
-        };
-      }
+      // Atualiza nome e foto
+      const displayName = user.displayName || 'Usuário';
+      const photoURL = user.photoURL || 'Assets/Placeholder.jpg';
+
+      if (userNameNav) userNameNav.textContent = displayName;
+      if (userPhoto) userPhoto.src = photoURL;
+
+      // Garante que o dropdown está fechado ao mudar de estado
+      if (profileDropdown) profileDropdown.classList.add('hidden');
+
+      // CHAMA A VERIFICAÇÃO DE ADMIN
+      checkAdminStatus(user.uid);
 
       // Fecha o modal de login se o usuário já estiver logado
       window.closeLogin();
     } else {
-      // Atualiza a interface para mostrar que o usuário não está logado
-      if (authControlsLoggedOut) authControlsLoggedOut.classList.remove('hidden');
-      if (authControlsLoggedIn) authControlsLoggedIn.classList.add('hidden');
+      // DESLOGADO: Oculta Perfil, Mostra Login
+      if (userProfileContainer) userProfileContainer.classList.add('hidden');
+      if (loginBtn) loginBtn.classList.remove('hidden');
+
+      // NOVO: OCULTA O LINK ADMIN AO DESLOGAR
+      if (adminLink) adminLink.classList.add('hidden');
 
       // Atualiza o botão para "Login"
       if (loginBtn) {
@@ -275,6 +332,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
       }
     }
-  });
 
+    // Assegura que o botão de "Agendar" continue funcional, caso seja manipulado
+    const agendarBtn = document.querySelector('a[href="#contato"][data-scroll="#contato"]');
+    if (agendarBtn) agendarBtn.classList.remove('hidden');
+  });
 });

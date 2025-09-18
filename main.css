@@ -90,11 +90,14 @@ a:hover {
 #login-overlay {
   position: fixed;
   inset: 0;
-  background: #0b0e14;
+  background: rgba(0, 0, 0, 0.6);
+  /* Fundo semi-transparente */
   display: flex;
+  /* Por padrão, o overlay é flex para centralizar o conteúdo */
   align-items: center;
   justify-content: center;
-  z-index: 200;
+  z-index: 9999;
+  /* Z-index alto para ficar na frente de tudo */
 }
 
 #login-box {
@@ -512,21 +515,58 @@ ul {
   white-space: nowrap;
 }
 
-/* Hidden utility */
-.hidden {
-  display: none !important;
+/* ========== PERFIL DO USUÁRIO NA NAVBAR ========== */
+#user-profile-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative; /* Essencial para o posicionamento do dropdown */
+  cursor: pointer;
 }
 
-/* Fix overlay default shown issue */
-#login-overlay {
-  display: none;
-  /* começa escondido */
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
+#user-photo {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%; /* Deixa a imagem redonda */
+  object-fit: cover;
+  border: 2px solid var(--panel);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+#user-name-nav {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* DROPDOWN DO PERFIL */
+#profile-dropdown {
+  position: absolute;
+  top: 120%; /* Posição abaixo do container do perfil */
+  right: 0;
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  width: 150px;
+  z-index: 100;
+  overflow: hidden; /* Garante que os filhos respeitem o border-radius */
+}
+
+#profile-dropdown a {
+  display: block;
+  padding: 12px 16px;
+  color: var(--text);
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+#profile-dropdown a:hover {
+  background-color: #f3f4f6; /* Um cinza claro no hover */
+  color: var(--brand);
+}
+
+.hidden {
+  display: none !important;
 }
 
 .close-overlay-btn {
