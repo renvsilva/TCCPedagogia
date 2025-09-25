@@ -13,7 +13,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 window.auth = firebase.auth();
 window.db = firebase.firestore();
-window.analytics = firebase.analytics();
+
+const storage = firebase.storage();
 
 document.addEventListener('DOMContentLoaded', () => {
   const loginOverlay = document.getElementById('login-overlay');
@@ -48,8 +49,16 @@ document.addEventListener('DOMContentLoaded', () => {
     loginOverlay.classList.remove('hidden');
     window.showLogin();
   };
-  window.closeLogin = function () {
-    loginOverlay.classList.add('hidden');
+  window.closeLogin = () => {
+    const loginOverlay = document.getElementById('login-overlay');
+    const loginForm = document.getElementById('login-form');
+    const createAccountForm = document.getElementById('create-account-form');
+
+    if (loginOverlay) { // <---- Verificação de página
+      loginOverlay.classList.add('hidden');
+      loginForm.classList.add('hidden');
+      createAccountForm.classList.add('hidden');
+    }
   };
   window.showCreate = function () {
     loginForm.classList.add('hidden');
@@ -107,6 +116,13 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.error("Erro ensureUserDoc:", err);
     }
+  }
+
+  async function uploadUserPhoto(uid, file) {
+    const storageRef = storage.ref(`users/${uid}/profile.jpg`);
+    const snapshot = await storageRef.put(file);
+    const photoURL = await snapshot.ref.getDownloadURL();
+    return photoURL;
   }
 
   // ============================
@@ -268,31 +284,48 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================
   // OBSERVADOR DE AUTENTICAÇÃO
   // ============================
-  auth.onAuthStateChanged((user) => {
+  auth.onAuthStateChanged(async (user) => {
     if (user) {
-      if (userProfileContainer) userProfileContainer.classList.remove('hidden');
-      if (loginBtn) loginBtn.classList.add('hidden');
+        // Usuário logado
+        if (userProfileContainer) userProfileContainer.classList.remove('hidden');
+        if (loginBtn) loginBtn.classList.add('hidden');
 
-      if (userNameNav) userNameNav.textContent = user.displayName || 'Usuário';
-      if (userPhoto) userPhoto.src = user.photoURL || 'Assets/Placeholder.jpg';
+        // NOVO: Puxa o documento do Firestore para ter as informações completas, incluindo a foto
+        try {
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                if (userNameNav) userNameNav.textContent = userData.name || user.displayName || 'Usuário';
+                if (userPhoto) userPhoto.src = userData.photoURL || user.photoURL || 'Assets/Placeholder.jpg';
+            } else {
+                // Se o documento não existir, usa os dados do objeto de autenticação como fallback
+                if (userNameNav) userNameNav.textContent = user.displayName || 'Usuário';
+                if (userPhoto) userPhoto.src = user.photoURL || 'Assets/Placeholder.jpg';
+            }
+        } catch (error) {
+            console.error('Erro ao carregar dados do usuário no Firestore:', error);
+            // Em caso de erro, usa os dados do objeto de autenticação como fallback
+            if (userNameNav) userNameNav.textContent = user.displayName || 'Usuário';
+            if (userPhoto) userPhoto.src = user.photoURL || 'Assets/Placeholder.jpg';
+        }
 
-      if (profileDropdown) profileDropdown.classList.add('hidden');
-
-      checkAdminStatus(user.uid);
-      window.closeLogin();
+        if (profileDropdown) profileDropdown.classList.add('hidden');
+        checkAdminStatus(user.uid);
+        window.closeLogin();
     } else {
-      if (userProfileContainer) userProfileContainer.classList.add('hidden');
-      if (loginBtn) loginBtn.classList.remove('hidden');
-      if (adminLink) adminLink.classList.add('hidden');
+        // Usuário não está logado
+        if (userProfileContainer) userProfileContainer.classList.add('hidden');
+        if (loginBtn) loginBtn.classList.remove('hidden');
+        if (adminLink) adminLink.classList.add('hidden');
 
-      if (loginBtn) {
-        loginBtn.textContent = "Login";
-        loginBtn.onclick = (e) => {
-          e.preventDefault();
-          window.openOverlay();
-          window.showLogin();
-        };
-      }
+        if (loginBtn) {
+            loginBtn.textContent = "Login";
+            loginBtn.onclick = (e) => {
+                e.preventDefault();
+                window.openOverlay();
+                window.showLogin();
+            };
+        }
     }
-  });
+  })
 });
