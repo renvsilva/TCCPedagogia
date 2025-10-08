@@ -7,93 +7,11 @@
   <title>Agenda — Admin</title>
 
   <link rel="stylesheet" href="../main.css">
-  <style>
-    .calendar {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 6px;
-      margin-top: 16px;
-    }
+    <link rel="stylesheet" href="../main.css">
+  <link rel="icon" type="image/x-icon" href="Assets/Logo.jpg">
 
-    .day {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 8px;
-      min-height: 110px;
-      cursor: pointer;
-      background: white;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      font-size: 14px;
-    }
-
-    .day:hover {
-      background: var(--bg);
-    }
-
-    .day.today {
-      border: 2px solid var(--primary);
-    }
-
-    .day-number {
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
-
-    .events {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .event {
-      background: var(--primary);
-      color: white;
-      font-size: 12px;
-      padding: 2px 4px;
-      border-radius: 4px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .calendar-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.4);
-      display: none;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .modal.active {
-      display: flex;
-    }
-
-    .modal-content {
-      background: white;
-      border-radius: var(--radius);
-      padding: 20px;
-      max-width: 400px;
-      width: 100%;
-    }
-
-    .event-actions {
-      display: flex;
-      gap: 6px;
-      margin-left: 6px;
-    }
-  </style>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
   <script src="https://www.gstatic.com/firebasejs/12.2.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.2.1/firebase-auth-compat.js"></script>
@@ -117,6 +35,7 @@
         <a href="pacientes.html" class="nav-link">👥 Pacientes</a>
         <a href="agenda.html" class="nav-link">🗓 Agenda</a>
         <a href="configs.html" class="nav-link">⚙ Configurações</a>
+        <a href="../index.html" class="nav-link"> Retornar</a>
       </nav>
     </aside>
 

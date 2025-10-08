@@ -4,9 +4,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Área Administrativa - Neuropsicopedagogia</title>
-  <link rel="stylesheet" href="../main.css" />
+  <title>Dashboard - Admin</title>
 
+  <link rel="stylesheet" href="../main.css">
+  <link rel="icon" type="image/x-icon" href="Assets/Logo.jpg">
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/12.2.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.2.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore-compat.js"></script>
@@ -22,13 +26,14 @@
 <body class="hidden">
   <div class="admin-layout">
     <!-- Menu lateral -->
-    <aside class="sidebar panel">
-      <h2 class="mt-2">Admin</h2>
-      <nav class="mt-4">
-        <a href="dashboard.html" class="nav-link">🏠 Dashboard</a>
-        <a href="pacientes.html" class="nav-link">🧠 Pacientes</a>
-        <a href="consultas.html" class="nav-link">📅 Agenda</a>
-        <a href="configs.html" class="nav-link">⚙️ Configurações</a>
+    <aside class="sidebar">
+      <h2>Admin</h2>
+      <nav>
+        <a href="dashboard.html" class="nav-link">📊 Dashboard</a>
+        <a href="pacientes.html" class="nav-link">👥 Pacientes</a>
+        <a href="consultas.html" class="nav-link">🗓 Agenda</a>
+        <a href="configs.html" class="nav-link">⚙ Configurações</a>
+        <a href="../index.html" class="nav-link"> Retornar</a>
       </nav>
     </aside>
 

@@ -20,7 +20,7 @@
     <script src="admin.js"></script>
 </head>
 
-<body class="hidden">
+<body class="">
     <div class="admin-layout">
         <!-- SIDEBAR -->
         <aside class="sidebar panel">
@@ -30,6 +30,7 @@
                 <a href="pacientes.html" class="nav-link">👥 Pacientes</a>
                 <a href="consultas.html" class="nav-link">📅 Agenda</a>
                 <a href="configs.html" class="nav-link">⚙️ Configurações</a>
+                <a href="../index.html" class="nav-link"> Retornar</a>
             </nav>
         </aside>
 
@@ -138,6 +139,20 @@
                     });
                 });
             }
+
+            firebase.auth().onAuthStateChanged(async (user) => {
+                if (user) {
+                    // Aqui você pode checar se é admin
+                    const userDoc = await db.collection("users").doc(user.uid).get();
+                    if (userDoc.exists && userDoc.data().isAdmin === true) {
+                        document.body.classList.remove("hidden");
+                    } else {
+                        window.location.href = "index.html"; // redireciona quem não é admin
+                    }
+                } else {
+                    window.location.href = "index.html"; // redireciona quem não está logado
+                }
+            });
 
             // Snapshot em tempo real (sem orderBy para não quebrar se faltar campo)
             window.db.collection("users").onSnapshot((snap) => {
