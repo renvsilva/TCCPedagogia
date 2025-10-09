@@ -14,7 +14,7 @@ firebase.initializeApp(firebaseConfig);
 window.auth = firebase.auth();
 window.db = firebase.firestore();
 
-const storage = firebase.storage();
+// const storage = firebase.storage(); comentado para n quebrar o firebase.storage
 
 document.addEventListener('DOMContentLoaded', () => {
   const loginOverlay = document.getElementById('login-overlay');

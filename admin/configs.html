@@ -20,7 +20,7 @@
     <script src="admin.js"></script>
 </head>
 
-<body class="">
+<body class="hidden">
     <div class="admin-layout">
         <!-- SIDEBAR -->
         <aside class="sidebar panel">
@@ -81,6 +81,21 @@
         document.addEventListener("DOMContentLoaded", () => {
             const usersBody = document.getElementById("usersBody");
 
+            checkAdminAccess()
+                .then(() => {
+                    document.body.classList.remove('hidden');
+
+                    // NOVO: Chama updateDashboard APENAS se estiver na página dashboard.html
+                    if (window.location.pathname.includes('dashboard.html')) {
+                        updateDashboard();
+                    }
+                    // Se estiver em configs.html, o script inline cuida do resto (o snapshot)
+
+                })
+                .catch(() => {
+                    // O redirecionamento já é tratado dentro de checkAdminAccess
+                });
+
             // ---- FUNÇÕES DE PROMOVER / REMOVER ----
             async function setAdmin(uid, status) {
                 try {
@@ -107,19 +122,19 @@
                     const tr = document.createElement("tr");
 
                     tr.innerHTML = `
-        <td>${u.name || "-"}</td>
-        <td>${u.email || "-"}</td>
-        <td>
-          <span class="badge" style="background:${u.isAdmin ? "var(--brand-2)" : "var(--muted)"}">
-            ${u.isAdmin ? "Admin" : "Usuário"}
-          </span>
-        </td>
-        <td>
-          ${u.isAdmin
+                    <td>${u.name || "-"}</td>
+                    <td>${u.email || "-"}</td>
+                    <td>
+                        <span class="badge" style="background:${u.isAdmin ? "var(--brand-2)" : "var(--muted)"}">
+                            ${u.isAdmin ? "Admin" : "Usuário"}
+                        </span>
+                    </td>
+                    <td>
+                        ${u.isAdmin
                             ? `<button class="btn btn-ghost" data-remove="${doc.id}">❌ Remover Admin</button>`
                             : `<button class="btn btn-primary" data-promote="${doc.id}">➕ Tornar Admin</button>`}
-        </td>
-      `;
+                    </td>
+                `;
 
                     usersBody.appendChild(tr);
                 });
@@ -140,27 +155,47 @@
                 });
             }
 
-            firebase.auth().onAuthStateChanged(async (user) => {
-                if (user) {
-                    // Aqui você pode checar se é admin
-                    const userDoc = await db.collection("users").doc(user.uid).get();
-                    if (userDoc.exists && userDoc.data().isAdmin === true) {
-                        document.body.classList.remove("hidden");
-                    } else {
-                        window.location.href = "index.html"; // redireciona quem não é admin
-                    }
-                } else {
-                    window.location.href = "index.html"; // redireciona quem não está logado
-                }
-            });
-
-            // Snapshot em tempo real (sem orderBy para não quebrar se faltar campo)
+            // APENAS LISTA O SNAPSHOT. A VERIFICAÇÃO DE ACESSO É FEITA PELO admin.js.
+            // O snapshot só será registrado se window.db existir (após inicialização do Firebase).
             window.db.collection("users").onSnapshot((snap) => {
                 console.log("Snapshot atualizado. Total usuários:", snap.size);
                 renderUsers(snap.docs);
             });
+
+            // Lógica do botão "Promover a Admin" (Adicionar Administrador)
+            document.getElementById("promoteBtn").addEventListener("click", async () => {
+                const email = document.getElementById("email").value;
+                if (!email) {
+                    alert("Por favor, insira um e-mail.");
+                    return;
+                }
+
+                // Para promover um usuário a admin, o Firebase exige uma função Cloud Function ou 
+                // que o usuário já exista no Firestore. Como o `ensureUserDoc` do `firebase.js`
+                // garante o documento no Firestore, podemos apenas buscá-lo.
+                try {
+                    // Tenta encontrar o UID pelo email (necessita de Cloud Function, o que é complexo para este ambiente)
+                    // Solução mais simples (e a que você está usando) é apenas atualizar o documento users
+                    // Para que esta solução funcione, o usuário JÁ DEVE TER FEITO LOGIN PELO MENOS UMA VEZ.
+
+                    // Busca o UID do usuário com base no e-mail (busca lenta, mas funciona se o usuário já fez login)
+                    const querySnapshot = await window.db.collection("users").where("email", "==", email).limit(1).get();
+
+                    if (querySnapshot.empty) {
+                        alert("Erro: Usuário não encontrado no Firestore. Peça para o usuário fazer login pelo menos uma vez.");
+                        return;
+                    }
+
+                    const uid = querySnapshot.docs[0].id;
+                    await setAdmin(uid, true); // Promove o usuário encontrado
+                    document.getElementById("email").value = "";
+
+                } catch (error) {
+                    console.error("Erro ao tentar promover:", error);
+                    alert("Erro ao tentar promover. Verifique o console.");
+                }
+            });
         });
     </script>
-
 
 </html>

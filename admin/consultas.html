@@ -7,7 +7,7 @@
   <title>Agenda — Admin</title>
 
   <link rel="stylesheet" href="../main.css">
-    <link rel="stylesheet" href="../main.css">
+  <link rel="stylesheet" href="../main.css">
   <link rel="icon" type="image/x-icon" href="Assets/Logo.jpg">
 
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,7 +53,6 @@
     </main>
   </div>
 
-  <!-- MODAL -->
   <div class="modal" id="eventModal">
     <div class="modal-content panel">
       <h2 id="modalDate"></h2>
@@ -61,7 +60,9 @@
 
       <h3 class="mt-3">➕ Nova Consulta</h3>
       <form id="eventForm">
-        <input type="text" id="paciente" class="input mt-1" placeholder="Nome do paciente" required>
+        <select id="pacienteSelect" class="input mt-1" required>
+          <option value="" disabled selected>Selecione um Paciente</option>
+        </select>
         <input type="time" id="hora" class="input mt-1" required>
         <button type="submit" class="btn btn-primary mt-2">Salvar</button>
       </form>
@@ -69,7 +70,6 @@
     </div>
   </div>
 
-  <!-- FIREBASE -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import {
@@ -81,16 +81,18 @@
       doc,
       query,
       where,
-      onSnapshot
+      onSnapshot,
+      getDocs 
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
-      apiKey: "SUA_API_KEY",
-      authDomain: "SEU_PROJETO.firebaseapp.com",
-      projectId: "SEU_PROJETO",
-      storageBucket: "SEU_PROJETO.appspot.com",
-      messagingSenderId: "SENDER_ID",
-      appId: "APP_ID"
+      apiKey: "AIzaSyDvMSEl-3Tj5IvC5cs09DY8xZuUve4NyOU",
+      authDomain: "tccneuropsicopedagoga.firebaseapp.com",
+      projectId: "tccneuropsicopedagoga",
+      storageBucket: "tccneuropsicopedagoga.firebasestorage.app",
+      messagingSenderId: "189432898003",
+      appId: "1:189432898003:web:aab9ddd5eba744a6350f26",
+      measurementId: "G-XR0LJT1KB8"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -102,11 +104,45 @@
     const modalDate = document.getElementById("modalDate");
     const eventList = document.getElementById("eventList");
     const eventForm = document.getElementById("eventForm");
-    const pacienteInput = document.getElementById("paciente");
+    const pacienteSelect = document.getElementById("pacienteSelect"); // Novo seletor
     const horaInput = document.getElementById("hora");
 
     let currentDate = new Date();
     let selectedDate = null;
+    let patientsList = []; // Array para armazenar pacientes (ID e Nome)
+
+    // FUNÇÃO CORRIGIDA: Carregar Pacientes
+    async function loadPatients() {
+        try {
+            // 1. Referência à coleção 'pacientes'
+            const patientsRef = collection(db, "pacientes");
+            
+            // 2. Cria a query: busca na coleção 'pacientes' onde o status é 'Ativo'
+            const q = query(patientsRef, where("status", "==", "Ativo")); 
+
+            // 3. Executa a query usando getDocs (Sintaxe Modular)
+            const patientsSnapshot = await getDocs(q); 
+
+            patientsList = patientsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                name: doc.data().nome || "Paciente sem nome"
+            }));
+
+            // Preenche o campo de seleção (select)
+            pacienteSelect.innerHTML = '<option value="" disabled selected>Selecione um Paciente</option>';
+            patientsList.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = p.name; // ⬅️ CORREÇÃO: Usando p.name, conforme definido no mapeamento
+                pacienteSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error("Erro ao carregar lista de pacientes:", error);
+            // Pode adicionar uma mensagem de erro na interface aqui
+        }
+    }
+    // ----------------------------------------------------------------------
+
 
     function formatDate(year, month, day) {
       return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -168,19 +204,22 @@
         }
         snapshot.forEach(docSnap => {
           const c = docSnap.data();
+          // Usa 'patientName' para novos agendamentos e 'paciente' como fallback para agendamentos antigos
+          const patientDisplay = c.patientName || c.paciente;
+
           if (detailed) {
             container.innerHTML += `
               <li>
-                ${c.hora} - ${c.paciente}
+                ${c.hora} - ${patientDisplay}
                 <span class="event-actions">
-                  <button class="btn btn-ghost" data-edit="${docSnap.id}" data-hora="${c.hora}" data-paciente="${c.paciente}">✏</button>
+                  <button class="btn btn-ghost" data-edit="${docSnap.id}" data-hora="${c.hora}" data-paciente="${patientDisplay}">✏</button>
                   <button class="btn btn-ghost" data-del="${docSnap.id}">🗑</button>
                 </span>
               </li>`;
           } else {
             const div = document.createElement("div");
             div.classList.add("event");
-            div.textContent = `${c.hora} ${c.paciente}`;
+            div.textContent = `${c.hora} ${patientDisplay}`;
             container.appendChild(div);
           }
         });
@@ -192,12 +231,14 @@
               const pacienteAtual = e.target.dataset.paciente;
               const horaAtual = e.target.dataset.hora;
 
-              const novoPaciente = prompt("Nome do paciente:", pacienteAtual);
+              const novoPacienteNome = prompt("Nome do paciente:", pacienteAtual);
               const novaHora = prompt("Hora:", horaAtual);
 
-              if (novoPaciente && novaHora) {
+              if (novoPacienteNome && novaHora) {
+                // Ao editar por prompt, a referência ao ID do paciente é perdida, 
+                // por isso atualizamos apenas o nome de exibição (patientName) e hora.
                 await updateDoc(doc(db, "consultas", id), {
-                  paciente: novoPaciente,
+                  patientName: novoPacienteNome,
                   hora: novaHora
                 });
               }
@@ -226,12 +267,19 @@
     });
     document.getElementById("closeModal").addEventListener("click", closeModal);
 
+    // ALTERAÇÃO: Lógica de submissão do formulário para salvar patientId e patientName
     eventForm.addEventListener("submit", async e => {
       e.preventDefault();
       if (!selectedDate) return;
 
+      const selectedPatientId = pacienteSelect.value;
+      // Encontra o nome completo na lista de pacientes carregada
+      const selectedPatient = patientsList.find(p => p.id === selectedPatientId);
+      const patientName = selectedPatient ? selectedPatient.name : 'Paciente Desconhecido';
+
       await addDoc(collection(db, "consultas"), {
-        paciente: pacienteInput.value,
+        patientId: selectedPatientId,   // ID do documento do paciente
+        patientName: patientName,       // Nome do paciente para exibição
         hora: horaInput.value,
         data: selectedDate
       });
@@ -239,7 +287,8 @@
     });
 
     renderCalendar();
+    loadPatients(); // Chama a função para carregar os pacientes
   </script>
 </body>
 
-</html>
+</html> 
