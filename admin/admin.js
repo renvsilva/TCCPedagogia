@@ -3,7 +3,7 @@
 // Criando variáveis locais (atalhos)
 const auth = window.auth;
 const db = window.db;
-const firebase = window.firebase; 
+const firebase = window.firebase;
 
 // ----------------------------------------------------------------------
 // Lógica de Verificação de Acesso
@@ -16,7 +16,7 @@ function checkAdminAccess() {
         newUrl = newUrl.replace('dashboard.html', 'index.html');
         newUrl = newUrl.replace('consultas.html', 'index.html');
         newUrl = newUrl.replace('pacientes.html', 'index.html');
-        newUrl = newUrl.replace('configs.html', 'index.html'); 
+        newUrl = newUrl.replace('configs.html', 'index.html');
         newUrl = newUrl.replace('/admin/', '/');
 
         window.location.replace(newUrl);
@@ -114,8 +114,8 @@ async function getAppointmentData() {
         // ----------------------------------------------------------------------
         const upcomingSnapshot = await db.collection('consultas')
             .where('data', '>=', todayStr)
-            .orderBy('data', 'asc') 
-            .orderBy('hora', 'asc') 
+            .orderBy('data', 'asc')
+            .orderBy('hora', 'asc')
             .limit(5)
             .get();
 
@@ -124,7 +124,7 @@ async function getAppointmentData() {
             const [year, month, day] = data.data.split('-');
             const dateDisplay = `${day}/${month}/${year}`;
             const patientDisplay = data.patientName || data.paciente || 'Paciente sem nome';
-            
+
             return {
                 id: doc.id,
                 ...data,
@@ -141,14 +141,14 @@ async function getAppointmentData() {
         // ----------------------------------------------------------------------
         // 2. Calcula total de consultas na semana
         // ----------------------------------------------------------------------
-        
+
         const startOfWeek = new Date(now);
         startOfWeek.setDate(now.getDate() - now.getDay()); // Início no domingo
-        const startOfWeekStr = startOfWeek.toISOString().split('T')[0]; 
+        const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
 
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6); // Fim no sábado
-        const endOfWeekStr = endOfWeek.toISOString().split('T')[0]; 
+        const endOfWeekStr = endOfWeek.toISOString().split('T')[0];
 
         const weekSnapshot = await db.collection('consultas')
             .where('data', '>=', startOfWeekStr)
@@ -170,7 +170,7 @@ async function getAppointmentData() {
 async function getRecentPatients() {
     try {
         const snapshot = await db.collection('pacientes')
-            .orderBy('nome', 'asc') 
+            .orderBy('nome', 'asc')
             .limit(5)
             .get();
 
@@ -178,9 +178,9 @@ async function getRecentPatients() {
             const data = doc.data();
             return {
                 id: doc.id,
-                name: data.nome,     
-                age: data.idade,     
-                phone: data.contato, 
+                name: data.nome,
+                age: data.idade,
+                phone: data.contato,
                 ...data
             };
         });
@@ -200,7 +200,7 @@ async function updateDashboard() {
     const [patientsCount, appointmentData, newPatientsData, recentPatients] = await Promise.all([
         getActivePatientsCount(),
         getAppointmentData(),
-        getNewPatientsData(), 
+        getNewPatientsData(),
         getRecentPatients()
     ]);
 
@@ -227,8 +227,8 @@ async function updateDashboard() {
         const b = kpis[2].querySelector('b');
         const h2 = kpis[2].querySelector('h2');
         const thirdP = kpis[2].querySelector('p:nth-child(3)');
-        
-        if (b) b.textContent = newPatientsData.count; 
+
+        if (b) b.textContent = newPatientsData.count;
         if (h2) h2.textContent = 'Total de Pacientes';
         if (thirdP) thirdP.textContent = `Último Cadastrado: ${newPatientsData.lastUser}`;
     }
@@ -237,7 +237,7 @@ async function updateDashboard() {
     // === 2. Atualiza Tabela de Pacientes Recentes ===
     const tableBody = document.querySelector('#pacientes .table tbody');
     if (tableBody) {
-        tableBody.innerHTML = ''; 
+        tableBody.innerHTML = '';
 
         if (recentPatients.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="4">Nenhum paciente recente encontrado.</td></tr>';
@@ -256,7 +256,7 @@ async function updateDashboard() {
     // === 3. Atualiza Lista de Próximas Consultas ===
     const ul = document.querySelector('#consultas ul');
     if (ul) {
-        ul.innerHTML = ''; 
+        ul.innerHTML = '';
 
         if (appointmentData.list.length === 0) {
             ul.innerHTML = '<li>Nenhuma consulta futura agendada.</li>';
@@ -275,13 +275,13 @@ async function updateDashboard() {
         const adminUser = await db.collection('users').doc(auth.currentUser.uid).get();
         const nomeInput = document.querySelector('#configuracoes input[type="text"][value="Dra. Raquel Maciel Reis"]');
         const emailInput = document.querySelector('#configuracoes input[type="email"][value="xzquel@gmail.com"]');
-        
+
         if (adminUser.exists) {
             const adminData = adminUser.data();
-            if(nomeInput) nomeInput.value = adminData.name || 'Dra. Raquel Maciel Reis';
-            if(emailInput) emailInput.value = adminData.email || auth.currentUser.email || 'xzquel@gmail.com';
+            if (nomeInput) nomeInput.value = adminData.name || 'Dra. Raquel Maciel Reis';
+            if (emailInput) emailInput.value = adminData.email || auth.currentUser.email || 'xzquel@gmail.com';
         } else {
-             if(emailInput) emailInput.value = auth.currentUser.email || 'xzquel@gmail.com';
+            if (emailInput) emailInput.value = auth.currentUser.email || 'xzquel@gmail.com';
         }
     }
 }
@@ -293,8 +293,14 @@ async function updateDashboard() {
 document.addEventListener('DOMContentLoaded', () => {
     checkAdminAccess()
         .then(() => {
+            // Se o acesso for concedido, remove a classe 'hidden' e exibe a página.
             document.body.classList.remove('hidden');
-            updateDashboard();
+
+            // NOVO: Chama updateDashboard APENAS se estiver na página dashboard.html
+            // Isso previne erros de DOM em outras páginas como configs.html
+            if (window.location.pathname.includes('dashboard.html')) {
+                updateDashboard();
+            }
         })
         .catch(() => {
             // O redirecionamento já é tratado dentro de checkAdminAccess
