@@ -53,21 +53,93 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginOverlay = document.getElementById('login-overlay');
     const loginForm = document.getElementById('login-form');
     const createAccountForm = document.getElementById('create-account-form');
+    const forgotPasswordForm = document.getElementById('forgot-password-form'); // NOVO
 
     if (loginOverlay) { // <---- Verificação de página
-      loginOverlay.classList.add('hidden');
-      loginForm.classList.add('hidden');
-      createAccountForm.classList.add('hidden');
+        loginOverlay.classList.add('hidden');
+        loginForm.classList.add('hidden');
+        createAccountForm.classList.add('hidden');
+        if (forgotPasswordForm) forgotPasswordForm.classList.add('hidden'); // NOVO
     }
-  };
-  window.showCreate = function () {
+};
+
+window.showCreate = function () {
+    const loginForm = document.getElementById('login-form');
+    const createAccountForm = document.getElementById('create-account-form');
+    const forgotPasswordForm = document.getElementById('forgot-password-form'); // NOVO
+
     loginForm.classList.add('hidden');
+    if (forgotPasswordForm) forgotPasswordForm.classList.add('hidden'); // NOVO
     createAccountForm.classList.remove('hidden');
-  };
-  window.showLogin = function () {
+};
+
+window.showLogin = function () {
+    const loginForm = document.getElementById('login-form');
+    const createAccountForm = document.getElementById('create-account-form');
+    const forgotPasswordForm = document.getElementById('forgot-password-form'); // NOVO
+
     createAccountForm.classList.add('hidden');
+    if (forgotPasswordForm) forgotPasswordForm.classList.add('hidden'); // NOVO
     loginForm.classList.remove('hidden');
-  };
+};
+
+  window.showForgotPassword = function () {
+    const loginForm = document.getElementById('login-form');
+    const createAccountForm = document.getElementById('create-account-form');
+    const forgotPasswordForm = document.getElementById('forgot-password-form');
+
+    loginForm.classList.add('hidden');
+    createAccountForm.classList.add('hidden');
+    forgotPasswordForm.classList.remove('hidden');
+    document.getElementById('forgot-msg').textContent = ''; // Limpa a mensagem anterior
+};
+
+window.sendPasswordReset = async function () {
+    const emailInput = document.getElementById('forgot-email');
+    const email = emailInput.value;
+    const msgEl = document.getElementById('forgot-msg');
+    const btn = document.querySelector('#forgot-password-form button[onclick="sendPasswordReset()"]');
+    const originalText = btn ? btn.textContent : 'Enviar link';
+
+    if (!email) {
+        msgEl.textContent = 'Por favor, insira seu email.';
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+        msgEl.textContent = '';
+    }
+
+    try {
+        await auth.sendPasswordResetEmail(email);
+
+        msgEl.textContent = `✅ Link de redefinição enviado para ${email}. Verifique sua caixa de entrada!`;
+        msgEl.style.color = '#198754'; // Cor verde para sucesso
+        emailInput.value = ''; // Limpa o campo de email
+
+    } catch (error) {
+        console.error('Erro sendPasswordReset:', error);
+        
+        let errorMessage = 'Erro ao enviar o email. Tente novamente.';
+        // Códigos de erro comuns do Firebase para redefinição
+        if (error.code === 'auth/user-not-found') {
+            errorMessage = 'Não há usuário registrado com este email.';
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = 'O formato do email é inválido.';
+        }
+
+        msgEl.textContent = `❌ ${errorMessage}`;
+        msgEl.style.color = '#dc3545'; // Cor vermelha para erro
+
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+};
 
   if (loginBtn) {
     loginBtn.addEventListener('click', (e) => {
@@ -133,6 +205,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const password = document.getElementById('user-pass-signup').value;
     const passwordConfirm = document.getElementById('user-pass2-signup').value;
     const userName = document.getElementById('user-name').value || '';
+
+    // VERIFICAÇÃO DE FORÇA (segurança extra)
+    const isStrong = /[A-Z]/.test(password) && 
+                     /[a-z]/.test(password) && 
+                     /[0-9]/.test(password) && 
+                     password.length >= 6;
+
+    if (!isStrong) {
+        alert('A senha é muito fraca. Por favor, inclua letra maiúscula, minúscula e número.');
+        return;
+    }
+    // FIM DA VERIFICAÇÃO DE FORÇA
+
+    if (password !== passwordConfirm) {
+      alert('As senhas não coincidem!');
+      return;
+    }
 
     if (password !== passwordConfirm) {
       alert('As senhas não coincidem!');
@@ -280,6 +369,70 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   };
+
+  
+  // ============================
+  // VALIDAÇÃO DE FORÇA DA SENHA (PARA CRIAR CONTA)
+  // ============================
+  const passInputSignup = document.getElementById('user-pass-signup');
+  // Seletor Específico: botão de submit DENTRO do formulário de criação de conta
+  const createAccountBtnSubmit = document.querySelector('#create-account-form button[type="submit"]');
+
+  // Elementos da lista de critérios
+  const ruleLength = document.getElementById('rule-length');
+  const ruleUpper = document.getElementById('rule-upper');
+  const ruleLower = document.getElementById('rule-lower');
+  const ruleNumber = document.getElementById('rule-number');
+
+  if (passInputSignup && createAccountBtnSubmit) {
+    // Bloqueia o botão de criação de conta inicialmente
+    createAccountBtnSubmit.disabled = true;
+
+    // Função que verifica a senha e atualiza o estado
+    function checkPasswordStrength() {
+      const val = passInputSignup.value;
+
+      // Regex de validação
+      const hasLength = val.length >= 8;
+      const hasUpper = /[A-Z]/.test(val);
+      const hasLower = /[a-z]/.test(val);
+      const hasNumber = /[0-9]/.test(val);
+
+      // Função auxiliar para atualizar visual
+      function updateClass(element, isValid) {
+        if (element) {
+          if (isValid) {
+            element.classList.add('valid');
+          } else {
+            element.classList.remove('valid');
+          }
+        }
+      }
+
+      // Atualiza a UI
+      updateClass(ruleLength, hasLength);
+      updateClass(ruleUpper, hasUpper);
+      updateClass(ruleLower, hasLower);
+      updateClass(ruleNumber, hasNumber);
+
+      // Bloqueia ou libera o botão de envio
+      const isStrong = hasLength && hasUpper && hasLower && hasNumber;
+      createAccountBtnSubmit.disabled = !isStrong;
+      
+      return isStrong; // Retorna o status de força
+    }
+
+    // Ouve o que o usuário digita
+    passInputSignup.addEventListener('input', checkPasswordStrength);
+
+    // Adiciona uma chamada à verificação ao mostrar o formulário de criação
+    const originalShowCreate = window.showCreate;
+    window.showCreate = function () {
+      originalShowCreate();
+      // Re-avalia a força da senha ao mostrar o formulário
+      setTimeout(checkPasswordStrength, 0); 
+    };
+  }
 
   // ============================
   // OBSERVADOR DE AUTENTICAÇÃO

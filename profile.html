@@ -67,11 +67,28 @@
                 <p class="muted">Para alterar a senha, preencha os campos abaixo.</p>
 
                 <label for="newPassword">Nova Senha:</label>
-                <input type="password" id="newPassword" class="input" minlength="6"
-                    placeholder="Deixe em branco para não alterar">
+                <div style="position:relative">
+                    <input type="password" id="newPassword" class="input" minlength="6"
+                        placeholder="Deixe em branco para não alterar">
+                    <span class="toggle-pass" onclick="togglePass('newPassword',this)">👁</span>
+                </div>
 
+                <div id="password-strength-meter" class="mt-2">
+                    <div class="strength-bar-container">
+                        <div id="strength-bar" class="strength-bar"></div>
+                    </div>
+                    <ul id="password-criteria-list" class="password-criteria">
+                        <li id="rule-length" class="criteria-item">Mín. 6 caracteres</li>
+                        <li id="rule-lower" class="criteria-item">Letra minúscula</li>
+                        <li id="rule-upper" class="criteria-item">Letra maiúscula</li>
+                        <li id="rule-number" class="criteria-item">Número</li>
+                    </ul>
+                </div>
                 <label for="confirmPassword">Confirmar Nova Senha:</label>
-                <input type="password" id="confirmPassword" class="input" minlength="6">
+                <div style="position:relative">
+                    <input type="password" id="confirmPassword" class="input" minlength="6">
+                    <span class="toggle-pass" onclick="togglePass('confirmPassword',this)">👁</span>
+                </div>
 
                 <div class="mt-4">
                     <button type="submit" class="btn btn-primary">Salvar Alterações</button>
@@ -87,6 +104,17 @@
     <script src="firebase.js"></script>
 
     <script>
+        function togglePass(inputId, el) {
+            const input = document.getElementById(inputId);
+            if (input.type === "password") {
+                input.type = "text";
+                el.textContent = "🕳"; // Olho aberto
+            } else {
+                input.type = "password";
+                el.textContent = "👁"; // Olho fechado
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const perfilForm = document.getElementById('perfilForm');
             const userNameInput = document.getElementById('userName');
@@ -96,6 +124,126 @@
             const userPhotoPreview = document.getElementById('userPhotoPreview');
             const photoUploadInput = document.getElementById('photoUpload');
             const uploadBtn = document.getElementById('uploadBtn');
+
+            // Variáveis para o medidor de força (Novas)
+    const strengthBar = document.getElementById('strength-bar');
+    const ruleLength = document.getElementById('rule-length');
+    const ruleLower = document.getElementById('rule-lower');
+    const ruleUpper = document.getElementById('rule-upper');
+    const ruleNumber = document.getElementById('rule-number');
+
+    /**
+     * Verifica a força da senha e atualiza o medidor visual.
+     * Baseado na lógica de 4 critérios do firebase.js: 6+ chars, minúscula, maiúscula e número.
+     * @param {string} password A senha a ser verificada.
+     * @returns {number} O score de força (0 a 4).
+     */
+    function checkPasswordStrength(password) {
+        let score = 0;
+        const checks = {
+            length: password.length >= 6,
+            lower: /[a-z]/.test(password),
+            upper: /[A-Z]/.test(password),
+            number: /[0-9]/.test(password)
+        };
+
+        // Atualiza o score e os itens da lista
+        if (checks.length) { score++; ruleLength.classList.add('valid'); } else { ruleLength.classList.remove('valid'); }
+        if (checks.lower) { score++; ruleLower.classList.add('valid'); } else { ruleLower.classList.remove('valid'); }
+        if (checks.upper) { score++; ruleUpper.classList.add('valid'); } else { ruleUpper.classList.remove('valid'); }
+        if (checks.number) { score++; ruleNumber.classList.add('valid'); } else { ruleNumber.classList.remove('valid'); }
+
+        // Atualiza a barra de força (progress bar)
+        let width = (score / 4) * 100; // 4 critérios = 100%
+        strengthBar.style.width = `${width}%`;
+
+        strengthBar.classList.remove('weak', 'medium', 'strong');
+        if (password.length > 0) {
+            if (score < 3) {
+                strengthBar.classList.add('weak');
+            } else if (score === 3) {
+                strengthBar.classList.add('medium');
+            } else if (score === 4) {
+                strengthBar.classList.add('strong');
+            }
+        } else {
+            strengthBar.style.width = '0%';
+        }
+
+        return score;
+    }
+
+    // Adiciona o listener para atualizar a força da senha em tempo real
+    newPasswordInput.addEventListener('input', (e) => {
+        checkPasswordStrength(e.target.value);
+    });
+    
+    // --- Modificação no evento de submit do formulário ---
+    perfilForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            alert('Você precisa estar logado para salvar as alterações.');
+            return;
+        }
+
+        submitButton.disabled = true;
+        submitButton.textContent = 'Salvando...';
+
+        try {
+            // 1. Atualiza nome e email no Firebase Auth e Firestore (Código Existente)
+            const userName = document.getElementById('userName').value;
+            const userEmail = document.getElementById('userEmail').value;
+
+            const updates = {};
+            if (userName !== user.displayName) {
+                await user.updateProfile({ displayName: userName });
+                updates.name = userName;
+            }
+            // Não permitimos mudança de email aqui para simplificar o exemplo, mas você
+            // pode implementar a mudança de email se necessário (envolvendo reautenticação).
+            // if (userEmail !== user.email) { /* ... lógica de mudança de email ... */ }
+
+            // 2. Validação da senha, se preenchida (Adicionando a validação de força)
+            if (newPasswordInput.value.trim() !== '') {
+                // VERIFICAR A FORÇA DA SENHA (BASEADO NA LÓGICA DO firebase.js)
+                const score = checkPasswordStrength(newPasswordInput.value);
+                // Exigir força total (score 4) para a alteração
+                if (score < 4) { 
+                    throw new Error("A nova senha é muito fraca. Por favor, inclua no mínimo 6 caracteres, letra maiúscula, minúscula e número."); 
+                }
+                
+                if (newPasswordInput.value !== confirmPasswordInput.value) {
+                    throw new Error("As novas senhas não coincidem!");
+                }
+                await user.updatePassword(newPasswordInput.value);
+            }
+
+            // 4. Salva as informações atualizadas no Firestore (Código Existente)
+            if (Object.keys(updates).length > 0) {
+                await firebase.firestore().collection('users').doc(user.uid).set(updates, { merge: true });
+            }
+
+            alert('Perfil atualizado com sucesso!');
+            setTimeout(() => window.location.reload(), 1000);
+
+        } catch (error) {
+            // Se o erro for de senha fraca do Firebase, trata com a mensagem customizada
+            if (error.code && error.code === 'auth/weak-password') {
+                 alert('Erro: A nova senha é muito fraca. Por favor, inclua letra maiúscula, minúscula, número e tenha no mínimo 6 caracteres.');
+            } else {
+                 alert(`Erro: ${error.message}`);
+            }
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Salvar Alterações';
+            // Limpa os campos de senha após a tentativa de salvamento
+            newPasswordInput.value = '';
+            confirmPasswordInput.value = '';
+            checkPasswordStrength(''); // Limpa o medidor de força
+        }
+    });
 
             // Lógica de upload de foto e redimensionamento (mantida)
             uploadBtn.addEventListener('click', () => photoUploadInput.click());
